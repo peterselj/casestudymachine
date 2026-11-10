@@ -144,12 +144,19 @@
   <section class="card hidden" id="outCard">
     <h2>3. Your deck and notes</h2>
     <div class="actions" style="margin-top:8px">
-      <button class="primary" id="dlPptx">Download deck (.pptx)</button>
+      <button class="primary" id="toDrive">Save to Google Drive</button>
+      <button id="dlPptx">Download deck (.pptx)</button>
       <button id="copyPrep">Copy notes for Google Docs</button>
       <button id="dlPrep">Download notes (.html)</button>
       <button id="saveRun">Save this run (.json)</button>
     </div>
-    <p class="note">To get Google Slides: upload the .pptx to Google Drive and open it, or in Slides choose File, Import slides. For Google Docs: copy the notes and paste into a blank doc.</p>
+    <p class="hint" style="margin-top:10px">Save to Google Drive creates a Google Slides deck and a Google Doc in your Drive. This page can only see the files it creates, nothing else in your Drive.</p>
+    <div id="driveSetup" class="note hidden">
+      <b>One-time setup:</b> Google sign-in needs a client ID. Follow "Google sign-in setup" in the <a href="https://github.com/peterselj/casestudymachine#google-sign-in-setup">README</a>, then paste it here.
+      <div class="actions" style="margin-top:8px"><input type="text" id="clientId" placeholder="1234567890-abc.apps.googleusercontent.com" style="flex:1;min-width:220px"><button id="saveClientId">Save</button></div>
+    </div>
+    <div id="driveResult" class="note hidden"></div>
+    <div id="driveError" class="error hidden"></div>
     <div class="tabs" role="tablist">
       <button role="tab" id="tabDeck" aria-selected="true">Deck</button>
       <button role="tab" id="tabPrep" aria-selected="false">Prep notes</button>

@@ -11,6 +11,11 @@
   'use strict';
   var $ = function (id) { return document.getElementById(id); };
   var API = 'https://api.anthropic.com/v1/messages';
+  /* Google sign-in client ID. Not a secret: it only names this site to Google.
+     Paste yours between the quotes (see README, "Google sign-in setup"). If left
+     empty, the page asks for one and remembers it in the browser. */
+  var GOOGLE_CLIENT_ID = '';
+  var DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';   // only files this page creates
   var MAX_TURNS = 40, MAX_RESULT_CHARS = 30000, ANALYSIS_TIMEOUT_MS = 20000;
 
   var tables = {};        // name -> array of row objects
@@ -314,6 +319,75 @@
   $('tabDeck').onclick = function () { tab('deck'); };
   $('tabPrep').onclick = function () { tab('prep'); };
   $('showNotes').onchange = applyView; $('oneCol').onchange = applyView;
+
+  /* ---------- Google Drive ---------- */
+
+  var gToken = null, gTokenExpires = 0;
+  function clientId() { return GOOGLE_CLIENT_ID || load('csm.gclient') || ''; }
+  function here(file) { return location.origin + location.pathname.replace(/[^/]*$/, '') + file; }
+
+  /* Opens Google's sign-in in a small window. Google sends the window back to
+     oauth.html, which passes the access token to this page and closes. */
+  function googleSignIn() {
+    if (gToken && Date.now() < gTokenExpires) return Promise.resolve(gToken);
+    return new Promise(function (resolve, reject) {
+      var state = Math.random().toString(36).slice(2) + Date.now().toString(36);
+      var url = 'https://accounts.google.com/o/oauth2/v2/auth?response_type=token&include_granted_scopes=true' +
+        '&client_id=' + encodeURIComponent(clientId()) + '&redirect_uri=' + encodeURIComponent(here('oauth.html')) +
+        '&scope=' + encodeURIComponent(DRIVE_SCOPE) + '&state=' + state;
+      var win = window.open(url, 'csm-google', 'width=520,height=640');
+      if (!win) return reject(new Error('Your browser blocked the sign-in window. Allow pop-ups for this site and try again.'));
+      var watch = setInterval(function () { if (win.closed) { cleanup(); reject(new Error('Sign-in was closed before it finished.')); } }, 700);
+      function cleanup() { clearInterval(watch); window.removeEventListener('message', onMsg); }
+      function onMsg(e) {
+        if (e.origin !== location.origin || !e.data || e.data.source !== 'csm-oauth') return;
+        cleanup();
+        var q = new URLSearchParams(e.data.hash || '');
+        if (q.get('state') !== state) return reject(new Error('Sign-in response did not match the request. Try again.'));
+        if (q.get('error')) return reject(new Error('Google sign-in failed: ' + q.get('error')));
+        gToken = q.get('access_token'); gTokenExpires = Date.now() + (parseInt(q.get('expires_in'), 10) || 3000) * 1000 - 60000;
+        if (!gToken) return reject(new Error('Google did not return an access token.'));
+        resolve(gToken);
+      }
+      window.addEventListener('message', onMsg);
+    });
+  }
+  /* Uploads a file and asks Drive to convert it to a Google format. */
+  async function driveCreate(token, name, googleType, blob) {
+    var form = new FormData();
+    form.append('metadata', new Blob([JSON.stringify({ name: name, mimeType: googleType })], { type: 'application/json' }));
+    form.append('file', blob);
+    var res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink', { method: 'POST', headers: { Authorization: 'Bearer ' + token }, body: form });
+    var j = await res.json().catch(function () { return {}; });
+    if (!res.ok) { if (res.status === 401) gToken = null; throw new Error('Google Drive refused the upload (' + res.status + '): ' + ((j.error && j.error.message) || 'unknown error')); }
+    return j;
+  }
+  async function saveToDrive() {
+    show('driveError', false); show('driveResult', false);
+    if (!clientId()) { show('driveSetup', true); $('clientId').focus(); return; }
+    var btn = $('toDrive'); btn.disabled = true; btn.textContent = 'Saving to Drive';
+    try {
+      var token = await googleSignIn();
+      var pptx = await CSM.toPptx(PptxGenJS, run.deck).write({ outputType: 'blob' });
+      var deck = await driveCreate(token, run.name, 'application/vnd.google-apps.presentation',
+        new Blob([pptx], { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' }));
+      var doc = await driveCreate(token, run.name + ': prep notes', 'application/vnd.google-apps.document', new Blob([prepDocument()], { type: 'text/html' }));
+      var box = $('driveResult'); box.innerHTML = '';
+      box.appendChild(document.createTextNode('Saved to your Drive: '));
+      box.appendChild(el('a', { href: deck.webViewLink, target: '_blank', rel: 'noopener' }, 'open the deck in Google Slides'));
+      box.appendChild(document.createTextNode(' and '));
+      box.appendChild(el('a', { href: doc.webViewLink, target: '_blank', rel: 'noopener' }, 'the prep notes in Google Docs'));
+      box.appendChild(document.createTextNode('.'));
+      show('driveResult', true);
+    } catch (e) { $('driveError').textContent = e.message || String(e); show('driveError', true); }
+    finally { btn.disabled = false; btn.textContent = 'Save to Google Drive'; }
+  }
+  $('toDrive').onclick = saveToDrive;
+  $('saveClientId').onclick = function () {
+    var v = $('clientId').value.trim();
+    if (!/\.apps\.googleusercontent\.com$/.test(v)) { $('driveError').textContent = 'That does not look like a client ID. It ends in .apps.googleusercontent.com'; show('driveError', true); return; }
+    store('csm.gclient', v); show('driveSetup', false); saveToDrive();
+  };
 
   $('dlPptx').onclick = function () { CSM.toPptx(PptxGenJS, run.deck).writeFile({ fileName: slug(run.name) + '.pptx' }); };
   $('dlPrep').onclick = function () { download(slug(run.name) + '-prep-notes.html', new Blob([prepDocument()], { type: 'text/html' })); };

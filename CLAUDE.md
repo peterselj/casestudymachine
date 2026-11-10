@@ -14,6 +14,7 @@ Static GitHub Pages site (no build step) that turns a product management case st
 - `playbook.md` is the product. It is sent to the model verbatim as the system prompt and is also meant to be read by people. The "Deck format" section must match what `js/render.js` accepts; change both together and bump the version line.
 - `js/render.js` lays out slides once and draws them twice (SVG preview, `.pptx`). New slide types go in `BUILDERS`, get a check in `validate`, and a row in the playbook table.
 - `js/app.js` is the page logic and the only place that calls the Anthropic API (raw `fetch`, because there is no build step). Tools: `run_analysis` (runs model-written JavaScript in a Web Worker against the user's data) and `deliver`.
+- Google Drive saving uses a hand-written OAuth pop-up (no Google script): the page opens Google sign-in, Google returns to `oauth.html`, which passes the token back. The only scope is `drive.file`. If the site moves to another address, the redirect URI registered with Google must change too.
 - `vendor/` holds pinned third-party libraries. Don't load scripts from a CDN.
 
 ## Deck style
