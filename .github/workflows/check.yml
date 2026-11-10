@@ -1,0 +1,30 @@
+name: Check site
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Required files exist
+        run: |
+          for f in index.html playbook.md js/app.js js/render.js .nojekyll vendor/pptxgen.bundle.js vendor/xlsx.full.min.js vendor/marked.min.js; do
+            test -f "$f" || { echo "::error::Missing $f"; exit 1; }
+          done
+      - name: Scripts parse
+        run: |
+          node --check js/app.js
+          node --check js/render.js
+      - name: Every slide type in the renderer is documented in the playbook
+        run: |
+          node -e "
+          const { TYPES } = require('./js/render.js');
+          const pb = require('fs').readFileSync('playbook.md', 'utf8');
+          const missing = TYPES.filter(t => !pb.includes('| \`' + t + '\` |'));
+          if (missing.length) { console.log('::error file=playbook.md::Slide types missing from the Deck format table: ' + missing.join(', ')); process.exit(1); }
+          console.log('All ' + TYPES.length + ' slide types documented');
+          "

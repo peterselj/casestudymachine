@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Case Study Machine</title>
+<meta name="description" content="Drop in a product management case study prompt and its data. Get back a deck to present and prep notes that explain every call.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect x='10' y='20' width='80' height='55' rx='6' fill='%23234c3a'/><rect x='24' y='48' width='10' height='16' fill='white'/><rect x='40' y='38' width='10' height='26' fill='white'/><rect x='56' y='30' width='10' height='34' fill='white'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* Shares JobBoard's palette and type: forest green on warm paper,
+     Hanken Grotesk (UI) + IBM Plex Mono (code/data). Change light and dark together. */
+  :root {
+    --paper: #f3f3ee; --paper-2: #fbfbf8; --surface: #ffffff;
+    --ink: #1b211d; --ink-soft: #3c453e; --muted: #6f776d; --faint: #9aa298;
+    --line: #e6e6df; --line-strong: #d4d5cc;
+    --forest: #234c3a; --forest-hover: #15352a; --forest-soft: #eef4f0; --forest-text: #234c3a; --on-forest: #ffffff;
+    --warn: #8a4b12; --warn-soft: #fbf1e3;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #141916; --paper-2: #1b211d; --surface: #1b211d;
+      --ink: #f3f3ee; --ink-soft: #d4d5cc; --muted: #9aa298; --faint: #6f776d;
+      --line: #2b332c; --line-strong: #3c453e;
+      --forest: #5e8f72; --forest-hover: #7fa589; --forest-soft: #1f2e26; --forest-text: #aebfb0; --on-forest: #0f2a21;
+      --warn: #e4b77e; --warn-soft: #2e261a;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #141916; --paper-2: #1b211d; --surface: #1b211d;
+    --ink: #f3f3ee; --ink-soft: #d4d5cc; --muted: #9aa298; --faint: #6f776d;
+    --line: #2b332c; --line-strong: #3c453e;
+    --forest: #5e8f72; --forest-hover: #7fa589; --forest-soft: #1f2e26; --forest-text: #aebfb0; --on-forest: #0f2a21;
+    --warn: #e4b77e; --warn-soft: #2e261a;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: "Hanken Grotesk", system-ui, sans-serif; font-size: 16px; line-height: 1.5; }
+  main { max-width: 980px; margin: 0 auto; padding: 32px 16px 80px; }
+  h1 { font-size: 34px; line-height: 1.15; margin: 0 0 10px; font-weight: 800; letter-spacing: -0.01em; }
+  h2 { font-size: 20px; margin: 0 0 4px; font-weight: 700; }
+  h3 { font-size: 16px; margin: 20px 0 6px; }
+  p { margin: 0 0 12px; }
+  .lede { font-size: 18px; color: var(--ink-soft); max-width: 62ch; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 22px; margin-top: 18px; }
+  .hint { color: var(--muted); font-size: 14px; margin: 0 0 10px; }
+  label { display: block; font-weight: 600; font-size: 14px; margin: 16px 0 6px; }
+  textarea, input[type=text], input[type=password], select {
+    width: 100%; font: inherit; color: var(--ink); background: var(--paper-2); border: 1px solid var(--line-strong); border-radius: 6px; padding: 10px 12px; }
+  textarea { min-height: 150px; resize: vertical; }
+  textarea.short { min-height: 90px; }
+  input:focus, textarea:focus, select:focus, button:focus-visible { outline: 2px solid var(--forest); outline-offset: 1px; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .row3 { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 14px; }
+  button { font: inherit; font-weight: 600; border-radius: 6px; padding: 10px 16px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); cursor: pointer; }
+  button:hover { border-color: var(--forest); }
+  button.primary { background: var(--forest); color: var(--on-forest); border-color: var(--forest); }
+  button.primary:hover { background: var(--forest-hover); }
+  button:disabled { opacity: 0.5; cursor: default; }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 18px; }
+  .drop { border: 1.5px dashed var(--line-strong); border-radius: 8px; padding: 18px; text-align: center; color: var(--muted); background: var(--paper-2); cursor: pointer; }
+  .drop.over { border-color: var(--forest); background: var(--forest-soft); }
+  .files { list-style: none; padding: 0; margin: 10px 0 0; font-family: "IBM Plex Mono", monospace; font-size: 13px; }
+  .files li { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+  .files button { padding: 0 8px; font-size: 12px; }
+  .note { background: var(--forest-soft); color: var(--forest-text); border-radius: 8px; padding: 12px 14px; font-size: 14px; margin-top: 14px; }
+  .error { background: var(--warn-soft); color: var(--warn); border-radius: 8px; padding: 12px 14px; font-size: 14px; margin-top: 14px; white-space: pre-wrap; }
+  #log { font-family: "IBM Plex Mono", monospace; font-size: 13px; }
+  #log details { border-bottom: 1px solid var(--line); padding: 8px 0; }
+  #log summary { cursor: pointer; }
+  #log pre { white-space: pre-wrap; word-break: break-word; background: var(--paper-2); border: 1px solid var(--line); border-radius: 6px; padding: 10px; margin: 8px 0 0; max-height: 280px; overflow: auto; }
+  #log .say { padding: 8px 0; border-bottom: 1px solid var(--line); font-family: "Hanken Grotesk", sans-serif; font-size: 15px; white-space: pre-wrap; }
+  .slides { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 14px; }
+  .slide { border: 1px solid var(--line-strong); border-radius: 6px; overflow: hidden; background: #fff; }
+  .slide svg { display: block; width: 100%; height: auto; }
+  .slide .sn { background: var(--paper-2); color: var(--ink-soft); font-size: 13px; padding: 10px 12px; border-top: 1px solid var(--line); }
+  .slide .sn b { color: var(--muted); font-weight: 600; }
+  .slides.one { grid-template-columns: 1fr; }
+  #prep { max-width: 72ch; }
+  #prep h1 { font-size: 24px; margin-top: 0; }
+  #prep h2 { font-size: 18px; margin: 26px 0 8px; }
+  #prep table { border-collapse: collapse; width: 100%; font-size: 14px; margin: 10px 0; display: block; overflow-x: auto; }
+  #prep th, #prep td { border: 1px solid var(--line-strong); padding: 6px 9px; text-align: left; vertical-align: top; }
+  #prep th { background: var(--paper-2); }
+  #prep code { font-family: "IBM Plex Mono", monospace; font-size: 13px; }
+  .tabs { display: flex; gap: 6px; border-bottom: 1px solid var(--line); margin: 6px 0 0; }
+  .tabs button { border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: none; color: var(--muted); padding: 10px 12px; }
+  .tabs button[aria-selected=true] { color: var(--ink); border-bottom-color: var(--forest); }
+  .hidden { display: none !important; }
+  footer { color: var(--muted); font-size: 14px; margin-top: 36px; }
+  a { color: var(--forest-text); }
+  .spin { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--line-strong); border-top-color: var(--forest); border-radius: 50%; animation: sp 0.8s linear infinite; vertical-align: -2px; margin-right: 6px; }
+  @keyframes sp { to { transform: rotate(360deg); } }
+  @media (max-width: 720px) { .row, .row3, .slides { grid-template-columns: 1fr; } h1 { font-size: 28px; } .card { padding: 16px; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Case Study Machine</h1>
+  <p class="lede">Paste a product management case study prompt, add the data, and get back a deck you can present and prep notes that explain every call, the weak spots, and the questions you'll be asked.</p>
+  <p class="hint">You present the work, so you still have to understand it and agree with it. The prep notes are there for that. Check whether the prompt allows AI before you use this.</p>
+
+  <section class="card" id="inputCard">
+    <h2>1. The case</h2>
+    <label for="prompt">The prompt, exactly as you received it</label>
+    <textarea id="prompt" placeholder="Paste the full assignment: the scenario, the questions, the time limit, the format they asked for."></textarea>
+
+    <label>Data files (optional)</label>
+    <div class="drop" id="drop" tabindex="0" role="button">Drop CSV or Excel files here, or click to choose</div>
+    <input type="file" id="file" multiple accept=".csv,.tsv,.xlsx,.xls" class="hidden">
+    <ul class="files" id="files"></ul>
+    <p class="hint">Files are read in your browser. Only column names, a sample of rows and the results of each calculation are sent to the model.</p>
+
+    <label for="notes">Your own first thoughts (recommended)</label>
+    <textarea id="notes" class="short" placeholder="Your hunches, what you noticed in the product, what you'd guess before looking. The machine tests these against the data and builds on them."></textarea>
+
+    <div class="row3">
+      <div><label for="author">Your name, for the title slide</label><input type="text" id="author" autocomplete="name"></div>
+      <div><label for="slot">Presentation slot</label><select id="slot"><option>20 minutes</option><option selected>30 minutes</option><option>45 minutes</option><option>60 minutes</option></select></div>
+      <div><label for="model">Model</label><select id="model"><option value="claude-opus-5-5">Claude Opus 5.5</option><option value="claude-fable-5-2">Claude Fable 5.2</option><option value="claude-sonnet-5-5">Claude Sonnet 5.5</option></select></div>
+    </div>
+
+    <label for="key">Anthropic API key</label>
+    <input type="password" id="key" placeholder="sk-ant-..." autocomplete="off">
+    <p class="hint"><label style="display:inline;font-weight:400;margin:0"><input type="checkbox" id="remember"> Remember the key in this browser.</label> The key goes straight from this page to Anthropic. This site has no server. Get a key at <a href="https://console.anthropic.com/" rel="noopener">console.anthropic.com</a>. Each run is billed to your key.</p>
+
+    <div class="actions">
+      <button class="primary" id="run">Build the deck and notes</button>
+      <button id="stop" class="hidden">Stop</button>
+      <button id="open">Open a saved run</button>
+      <input type="file" id="openFile" accept=".json" class="hidden">
+      <span id="status" class="hint" style="margin:0"></span>
+    </div>
+    <div id="error" class="error hidden"></div>
+  </section>
+
+  <section class="card hidden" id="logCard">
+    <h2>2. What the machine is doing</h2>
+    <p class="hint">Every calculation is listed here with the code that produced it, so you can see how each number was reached.</p>
+    <div id="log"></div>
+  </section>
+
+  <section class="card hidden" id="outCard">
+    <h2>3. Your deck and notes</h2>
+    <div class="actions" style="margin-top:8px">
+      <button class="primary" id="dlPptx">Download deck (.pptx)</button>
+      <button id="copyPrep">Copy notes for Google Docs</button>
+      <button id="dlPrep">Download notes (.html)</button>
+      <button id="saveRun">Save this run (.json)</button>
+    </div>
+    <p class="note">To get Google Slides: upload the .pptx to Google Drive and open it, or in Slides choose File, Import slides. For Google Docs: copy the notes and paste into a blank doc.</p>
+    <div class="tabs" role="tablist">
+      <button role="tab" id="tabDeck" aria-selected="true">Deck</button>
+      <button role="tab" id="tabPrep" aria-selected="false">Prep notes</button>
+    </div>
+    <div id="deckPane">
+      <div class="actions" style="margin-top:12px"><label style="margin:0;font-weight:400"><input type="checkbox" id="showNotes" checked> Show speaker notes</label><label style="margin:0;font-weight:400"><input type="checkbox" id="oneCol"> Large slides</label></div>
+      <div class="slides" id="slides"></div>
+    </div>
+    <div id="prepPane" class="hidden" style="margin-top:16px"><div id="prep"></div></div>
+  </section>
+
+  <footer>
+    <p>The method is in <a href="playbook.md">playbook.md</a>, the same text the model is given. Part of the <a href="https://peterselj.github.io/resumemachine/">ResumeMachine</a> family. Source on <a href="https://github.com/peterselj/casestudymachine">GitHub</a>.</p>
+  </footer>
+</main>
+<script src="vendor/marked.min.js"></script>
+<script src="vendor/xlsx.full.min.js"></script>
+<script src="vendor/pptxgen.bundle.js"></script>
+<script src="js/render.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
