@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Signing in</title>
+</head>
+<body style="font-family:system-ui,sans-serif;padding:24px">
+<p id="msg">Finishing sign-in.</p>
+<script>
+  // Google sends the sign-in window here. Hand the result to the page that
+  // opened this window (same site only), then close.
+  var hash = location.hash.slice(1) || location.search.slice(1);
+  history.replaceState(null, '', location.pathname);
+  if (window.opener) { window.opener.postMessage({ source: 'csm-oauth', hash: hash }, location.origin); window.close(); }
+  else document.getElementById('msg').textContent = 'You can close this window and go back to Case Study Machine.';
+</script>
+</body>
+</html>
