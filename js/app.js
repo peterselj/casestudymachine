@@ -183,6 +183,52 @@
   /* Blocks go back to the API exactly as they came, minus our private flag. */
   function forReplay(blocks) { return blocks.map(function (b) { if (!b._bad) return b; var c = Object.assign({}, b); delete c._bad; return c; }); }
 
+  /* ---------- running in a Claude chat instead (no API key) ---------- */
+
+  var CHAT_PREAMBLE = [
+    'I want your help with a product management case study. Follow the playbook at the end of this message.',
+    '',
+    'Two things are different because we are in a chat:',
+    '1. There is no run_analysis tool. Use your own code execution or analysis tool on the files I attached, for every number. If you cannot run code here, tell me and stop; do not estimate.',
+    '2. There is no deliver tool. When you are finished, create one file named case-study-run.json containing a single JSON object with exactly two keys: "deck" (in the playbook\'s deck format) and "prep_markdown" (a string). It must be valid JSON. If you cannot create files, put the JSON in one code block instead. I will load it into Case Study Machine, which draws the slides.',
+    '',
+    'Before you hand it over, check the deck against the format: every slide has a type and a title, every table row has as many cells as there are columns, and every chart series has one value per category.',
+    'After the file, tell me in two or three sentences what you recommended and the first thing I should check.'
+  ].join('\n');
+  function caseBlock() {
+    return '<prompt>\n' + $('prompt').value.trim() + '\n</prompt>\n\n' +
+      '<my_notes>\n' + ($('notes').value.trim() || 'None supplied.') + '\n</my_notes>\n\n' +
+      'Presentation slot: ' + $('slot').value + '.\n' +
+      'My name for the title slide: ' + ($('author').value.trim() || 'leave the author blank') + '.\n' +
+      'Today\'s date: ' + new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) + '.';
+  }
+  async function copyBrief() {
+    setError('');
+    if (!$('prompt').value.trim()) return setError('Paste the case study prompt first.');
+    store('csm.author', $('author').value.trim());
+    var playbook;
+    try { playbook = await (await fetch('playbook.md', { cache: 'no-cache' })).text(); }
+    catch (e) { return setError('Could not load playbook.md. If you opened this page as a file, run a local server instead (see the README).'); }
+    var brief = CHAT_PREAMBLE + '\n\n' + caseBlock() + '\n\nThe data is in the files attached to this message.\n\n<playbook>\n' + playbook + '\n</playbook>';
+    try { await navigator.clipboard.writeText(brief); $('briefInfo').textContent = 'Copied. Now paste it into Claude.'; }
+    catch (e) { $('paste').value = brief; $('briefInfo').textContent = 'Could not reach the clipboard, so the brief is in the box below. Select all and copy it.'; }
+  }
+  /* Accepts the JSON file's text, with or without a code fence or chatter around it. */
+  function loadRunText(text) {
+    var t = String(text || ''), a = t.indexOf('{'), b = t.lastIndexOf('}');
+    if (a < 0 || b <= a) throw new Error('No JSON found. Paste the contents of case-study-run.json, starting with {');
+    var j;
+    try { j = JSON.parse(t.slice(a, b + 1)); } catch (e) { throw new Error('The text is cut off or not valid JSON (' + e.message + '). Ask Claude to send the file again.'); }
+    var deck = j.deck || j, errs = CSM.validate(deck);
+    if (errs.length) throw new Error('The deck has problems. Paste this back to Claude and ask it to fix the file:\n- ' + errs.slice(0, 8).join('\n- '));
+    run = { version: 1, name: (deck.meta && deck.meta.title) || 'Case study', deck: deck, prep_markdown: j.prep_markdown || '' };
+    setError(''); renderRun(); $('outCard').scrollIntoView({ behavior: 'smooth' });
+  }
+  function setMode(m) {
+    $('modeChat').setAttribute('aria-selected', m === 'chat'); $('modeApi').setAttribute('aria-selected', m === 'api');
+    show('chatPane', m === 'chat'); show('apiPane', m === 'api'); store('csm.mode', m);
+  }
+
   async function start() {
     setError('');
     var key = $('key').value.trim(), prompt = $('prompt').value.trim();
@@ -405,16 +451,14 @@
   $('openFile').onchange = function (e) {
     var f = e.target.files[0]; e.target.value = ''; if (!f) return;
     var reader = new FileReader();
-    reader.onload = function () {
-      try {
-        var j = JSON.parse(reader.result), deck = j.deck || j, errs = CSM.validate(deck);
-        if (errs.length) throw new Error(errs.slice(0, 5).join('; '));
-        run = { version: 1, name: (deck.meta && deck.meta.title) || f.name, deck: deck, prep_markdown: j.prep_markdown || '' };
-        setError(''); renderRun(); $('outCard').scrollIntoView({ behavior: 'smooth' });
-      } catch (err) { setError('That file is not a saved run: ' + err.message); }
-    };
+    reader.onload = function () { try { loadRunText(reader.result); } catch (err) { setError(err.message); } };
     reader.readAsText(f);
   };
+  $('usePaste').onclick = function () { try { loadRunText($('paste').value); } catch (err) { setError(err.message); } };
+  $('copyBrief').onclick = copyBrief;
+  $('modeChat').onclick = function () { setMode('chat'); };
+  $('modeApi').onclick = function () { setMode('api'); };
+  setMode(load('csm.mode') === 'api' ? 'api' : 'chat');
 
   var savedKey = load('csm.key'); if (savedKey) { $('key').value = savedKey; $('remember').checked = true; }
   var savedAuthor = load('csm.author'); if (savedAuthor) $('author').value = savedAuthor;

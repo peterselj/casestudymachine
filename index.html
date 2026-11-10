@@ -87,6 +87,8 @@
   .tabs { display: flex; gap: 6px; border-bottom: 1px solid var(--line); margin: 6px 0 0; }
   .tabs button { border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: none; color: var(--muted); padding: 10px 12px; }
   .tabs button[aria-selected=true] { color: var(--ink); border-bottom-color: var(--forest); }
+  .stepsList { padding-left: 22px; margin: 8px 0 0; }
+  .stepsList li { margin-bottom: 14px; }
   .hidden { display: none !important; }
   footer { color: var(--muted); font-size: 14px; margin-top: 36px; }
   a { color: var(--forest-text); }
@@ -110,28 +112,46 @@
     <div class="drop" id="drop" tabindex="0" role="button">Drop CSV or Excel files here, or click to choose</div>
     <input type="file" id="file" multiple accept=".csv,.tsv,.xlsx,.xls" class="hidden">
     <ul class="files" id="files"></ul>
-    <p class="hint">Files are read in your browser. Only column names, a sample of rows and the results of each calculation are sent to the model.</p>
+    <p class="hint">Only needed here if you run with an API key. Files are read in your browser; only column names, a sample of rows and the results of each calculation are sent to the model. If you run in Claude, attach the files to the chat instead.</p>
 
     <label for="notes">Your own first thoughts (recommended)</label>
     <textarea id="notes" class="short" placeholder="Your hunches, what you noticed in the product, what you'd guess before looking. The machine tests these against the data and builds on them."></textarea>
 
-    <div class="row3">
+    <div class="row">
       <div><label for="author">Your name, for the title slide</label><input type="text" id="author" autocomplete="name"></div>
       <div><label for="slot">Presentation slot</label><select id="slot"><option>20 minutes</option><option selected>30 minutes</option><option>45 minutes</option><option>60 minutes</option></select></div>
-      <div><label for="model">Model</label><select id="model"><option value="claude-opus-5-5">Claude Opus 5.5</option><option value="claude-fable-5-2">Claude Fable 5.2</option><option value="claude-sonnet-5-5">Claude Sonnet 5.5</option></select></div>
     </div>
 
-    <label for="key">Anthropic API key</label>
-    <input type="password" id="key" placeholder="sk-ant-..." autocomplete="off">
-    <p class="hint"><label style="display:inline;font-weight:400;margin:0"><input type="checkbox" id="remember"> Remember the key in this browser.</label> The key goes straight from this page to Anthropic. This site has no server. Get a key at <a href="https://console.anthropic.com/" rel="noopener">console.anthropic.com</a>. Each run is billed to your key.</p>
-
-    <div class="actions">
-      <button class="primary" id="run">Build the deck and notes</button>
-      <button id="stop" class="hidden">Stop</button>
-      <button id="open">Open a saved run</button>
-      <input type="file" id="openFile" accept=".json" class="hidden">
-      <span id="status" class="hint" style="margin:0"></span>
+    <h3 style="margin-top:26px">How do you want to run it?</h3>
+    <div class="tabs" role="tablist">
+      <button role="tab" id="modeChat" aria-selected="true">In Claude, on my subscription</button>
+      <button role="tab" id="modeApi" aria-selected="false">Automatically, with an API key</button>
     </div>
+
+    <div id="chatPane">
+      <p class="hint" style="margin-top:14px">No extra cost: Claude does the work in a normal chat on your Claude plan, and this page turns the result into slides.</p>
+      <ol class="stepsList">
+        <li><button class="primary" id="copyBrief">Copy the brief</button> <span class="hint" id="briefInfo"></span></li>
+        <li>Open <a href="https://claude.ai/new" target="_blank" rel="noopener">a new chat in Claude</a>, paste the brief, attach your data files, and send.</li>
+        <li>Claude replies with a file called <code>case-study-run.json</code>. Open it here, or paste its contents:
+          <textarea id="paste" class="short" placeholder='Paste what Claude gave you. It starts with {' style="margin-top:8px"></textarea>
+          <div class="actions" style="margin-top:8px"><button class="primary" id="usePaste">Show my deck</button><button id="open">Open the file</button></div>
+        </li>
+      </ol>
+    </div>
+
+    <div id="apiPane" class="hidden">
+      <label for="key">Anthropic API key</label>
+      <input type="password" id="key" placeholder="sk-ant-..." autocomplete="off">
+      <p class="hint"><label style="display:inline;font-weight:400;margin:0"><input type="checkbox" id="remember"> Remember the key in this browser.</label> The key goes straight from this page to Anthropic. This site has no server. Get a key at <a href="https://console.anthropic.com/" rel="noopener">console.anthropic.com</a>. Each run is billed to your key, separately from any Claude subscription.</p>
+      <div class="row"><div><label for="model">Model</label><select id="model"><option value="claude-opus-5-5">Claude Opus 5.5</option><option value="claude-fable-5-2">Claude Fable 5.2</option><option value="claude-sonnet-5-5">Claude Sonnet 5.5</option></select></div></div>
+      <div class="actions">
+        <button class="primary" id="run">Build the deck and notes</button>
+        <button id="stop" class="hidden">Stop</button>
+        <span id="status" class="hint" style="margin:0"></span>
+      </div>
+    </div>
+    <input type="file" id="openFile" accept=".json,.txt" class="hidden">
     <div id="error" class="error hidden"></div>
   </section>
 
