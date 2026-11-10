@@ -7,12 +7,15 @@ Paste a product management case study prompt, add the data, and get back:
 
 Part of the JobBoard / ResumeMachine family. Static site, no build step, no server.
 
-## How it works
+## Three ways to run it
 
-1. You paste the prompt, drop in CSV or Excel files, and add your own first thoughts.
-2. The page sends the prompt, your notes and a sample of the data to Claude, with [`playbook.md`](playbook.md) as its instructions. You supply your own Anthropic API key; it goes from your browser straight to Anthropic.
-3. Claude asks for calculations. Each one runs in your browser against the full data and is listed on the page with its code, so you can see where every number came from.
-4. Claude hands back a deck and prep notes. The page draws the deck, and the same drawing code writes the `.pptx`.
+| Way | Cost | What you do |
+|---|---|---|
+| **In a Claude chat** (the default on the site) | Included in a Claude plan | The site gives you a brief to paste into Claude along with your data files. Claude replies with a file; you open it on the site, which draws the slides and saves them to Google Drive. |
+| **In Claude Code** | Included in a Claude plan | Open this repository in Claude Code, share the prompt and data, and ask it to run the case study. It follows the same playbook and writes Google Slides and a Google Doc directly, if your Google connectors are on. |
+| **Automatically, with an API key** | Billed per run to an Anthropic API key | The site does everything in one click and shows each calculation with its code. |
+
+All three follow [`playbook.md`](playbook.md) and produce the same kind of deck, drawn by the same code.
 
 ## Files
 
@@ -24,6 +27,7 @@ Part of the JobBoard / ResumeMachine family. Static site, no build step, no serv
 | `oauth.html` | The small page Google returns to after sign-in |
 | `js/render.js` | Turns a deck description into slides (preview and `.pptx`) |
 | `vendor/` | Third-party libraries, copied in so the site has no build step: PptxGenJS 3.12.0, SheetJS 0.18.5, marked 12.0.2 |
+| `.claude/skills/case-study/` | Instructions for running the method inside Claude Code |
 | `tools/build.mjs` | Optional: build a `.pptx` from a saved run on the command line |
 
 ## Preview locally
@@ -52,6 +56,6 @@ Google renames these screens from time to time; the pieces to find are always th
 
 ## Status
 
-Early. The deck renderer, file reading and the tool loop are tested against a simulated API. The first real deck was produced by running the playbook by hand in Claude Code. The page has not yet been run end to end with a real API key, and Google sign-in has only been tested against a simulated Google.
+Early. The deck renderer, file reading and the tool loop are tested against a simulated API. The first real deck was produced by running the playbook by hand in Claude Code. Neither the chat route nor the API-key route has been run end to end with a real model yet, and Google sign-in has only been tested against a simulated Google.
 
 No worked examples are stored in this repository, on purpose: real case study prompts and data belong to the companies that sent them. Use "Save this run" to keep your own.
